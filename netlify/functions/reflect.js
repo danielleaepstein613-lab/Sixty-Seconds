@@ -11,8 +11,8 @@ export default async (req) => {
     const body = await req.json();
     text = (body.text || "").trim();
   } catch (e) {
-    return new Response(JSON.stringify({ error: "Bad request" }), {
-      status: 400,
+    return new Response(JSON.stringify({ reflection: "DEBUG: couldn't read your text — " + e.message }), {
+      status: 200,
       headers: { "Content-Type": "application/json" }
     });
   }
@@ -26,8 +26,8 @@ export default async (req) => {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Missing API key on the server." }), {
-      status: 500,
+    return new Response(JSON.stringify({ reflection: "DEBUG: no API key found on the server." }), {
+      status: 200,
       headers: { "Content-Type": "application/json" }
     });
   }
@@ -66,14 +66,14 @@ export default async (req) => {
         headers: { "Content-Type": "application/json" }
       });
     } else {
-      return new Response(JSON.stringify({ reflection: "I'm here, but the words didn't quite come through this time. Try once more?" }), {
+      return new Response(JSON.stringify({ reflection: "DEBUG: API responded but no text. Full response: " + JSON.stringify(data) }), {
         status: 200,
         headers: { "Content-Type": "application/json" }
       });
     }
   } catch (e) {
-    return new Response(JSON.stringify({ error: "Couldn't reach the reflection service." }), {
-      status: 500,
+    return new Response(JSON.stringify({ reflection: "DEBUG: fetch failed — " + e.message }), {
+      status: 200,
       headers: { "Content-Type": "application/json" }
     });
   }
