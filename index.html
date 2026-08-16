@@ -1,1 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sixty Seconds</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(160deg, #f6f3ee 0%, #eae4da 100%);
+    color: #2b2622;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .sub {
+    color: #8a7f72;
+    font-size: 1rem;
+    margin-bottom: 28px;
+  }
+  .timer {
+    font-size: 3.2rem;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    color: #0abab5;
+    margin-bottom: 18px;
+    min-height: 3.4rem;
+  }
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    border: 1px solid #d8cfc2;
+    border-radius: 16px;
+    padding: 18px;
+    font-size: 1.1rem;
+    line-height: 1.5;
+    resize: none;
+    background: #fffdf9;
+    color: #2b2622;
+    outline: none;
+    font-family: inherit;
+  }
+  textarea:focus { border-color: #0abab5; }
+  textarea:disabled { opacity: 0.7; }
+  button {
+    margin-top: 20px;
+    background: #0abab5;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 15px 40px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { background: #c3bcb0; cursor: default; }
+  .reflection {
+    margin-top: 28px;
+    text-align: left;
+    background: #fffdf9;
+    border: 1px solid #e4dccf;
+    border-radius: 16px;
+    padding: 22px;
+    font-size: 1.12rem;
+    line-height: 1.6;
+    color: #3a342e;
+    white-space: pre-wrap;
+    display: none;
+  }
+  .reflection.show { display: block; }
+  .label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #0abab5;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sixty Seconds</h1>
+    <p class="sub">Empty your mind. I'll reflect it back.</p>
+    <div class="timer" id="timer">1:00</div>
+    <textarea id="pad" placeholder="Tap Begin, then just write…" disabled></textarea>
+    <button id="action">Begin</button>
+    <div class="reflection" id="reflection"></div>
+  </div>
+
+<script>
+  const pad = document.getElementById('pad');
+  const timerEl = document.getElementById('timer');
+  const btn = document.getElementById('action');
+  const reflection = document.getElementById('reflection');
+  let seconds = 60, ticking = null, phase = 'idle';
+
+  function format(s) {
+    const m = Math.floor(s / 60);
+    const sec = String(s % 60).padStart(2, '0');
+    return m + ':' + sec;
+  }
+
+  function begin() {
+    phase = 'writing';
+    seconds = 60;
+    reflection.classList.remove('show');
+    reflection.innerHTML = '';
+    pad.value = '';
+    pad.disabled = false;
+    pad.focus();
+    btn.textContent = 'Done';
+    timerEl.textContent = format(seconds);
+    ticking = setInterval(() => {
+      seconds--;
+      timerEl.textContent = format(seconds);
+      if (seconds <= 0) finish();
+    }, 1000);
+  }
+
+  async function finish() {
+    if (phase !== 'writing') return;
+    phase = 'reflecting';
+    clearInterval(ticking);
+    pad.disabled = true;
+    btn.disabled = true;
+    timerEl.textContent = "0:00";
+    const text = pad.value.trim();
+    if (!text) {
+      showReflection("Nothing written yet — that's okay too. Tap below to try again.");
+      resetButton();
+      return;
+    }
+    reflection.classList.add('show');
+    reflection.innerHTML = '<div class="label">Reflecting…</div>';
+    try {
+      const res = await fetch('/.netlify/functions/reflect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      const data = await res.json();
+      if (data.reflection) {
+        showReflection(data.reflection);
+      } else {
+        showReflection("The reflection service isn't connected yet. (This is the next step.)");
+      }
+    } catch (e) {
+      showReflection("Couldn't reach the reflection service yet. (This is the next step.)");
+    }
+    resetButton();
+  }
+
+  function showReflection(txt) {
+    reflection.classList.add('show');
+    reflection.innerHTML = '<div class="label">A reflection</div>' + txt.replace(/</g, '&lt;');
+  }
+
+  function resetButton() {
+    btn.disabled = false;
+    btn.textContent = 'Write again';
+    phase = 'done';
+  }
+
+  btn.addEventListener('click', () => {
+    if (phase === 'idle' || phase === 'done') begin();
+    else if (phase === 'writing') finish();
+  });
+</script>
+</body>
+</html>
 
